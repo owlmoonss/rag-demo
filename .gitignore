@@ -15,3 +15,4 @@ __pycache__
 # Dependency managers
 *.lock
 .qodo
+.testing
