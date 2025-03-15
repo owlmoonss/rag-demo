@@ -4,7 +4,7 @@ from langchain.prompts.prompt import PromptTemplate
 from langchain_community.vectorstores import Neo4jVector
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings as Ollama
 from retry import retry
 import logging
 import streamlit as st
@@ -33,12 +33,7 @@ VECTOR_PROMPT = PromptTemplate(
     input_variables=["input", "context"], template=VECTOR_PROMPT_TEMPLATE
 )
 
-if "USER_OPENAI_API_KEY" in st.session_state:
-    openai_key = st.session_state["USER_OPENAI_API_KEY"]
-else:
-    openai_key = st.secrets["OPENAI_API_KEY"]
-
-EMBEDDING_MODEL = OpenAIEmbeddings(openai_api_key=openai_key)
+EMBEDDING_MODEL = Ollama(model="deepseek-r1")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -51,7 +46,6 @@ node_property_name = "textopenaiembedding"
 url = st.secrets["NEO4J_URI"]
 username = st.secrets["NEO4J_USERNAME"]
 password = st.secrets["NEO4J_PASSWORD"]
-
 
 vector_store = None
 try:
@@ -91,14 +85,13 @@ if vector_store is None:
 vector_retriever = vector_store.as_retriever()
 
 vector_chain = RetrievalQAWithSourcesChain.from_chain_type(
-    ChatOpenAI(temperature=0, openai_api_key=openai_key),
+    Ollama(model="deepseek-r1"),  # Replace ChatOpenAI with Ollama
     chain_type="stuff",
     retriever=vector_retriever,
     memory=MEMORY,
     reduce_k_below_max_tokens=True,
     max_tokens_limit=3000,
 )
-
 
 @retry(tries=2, delay=5)
 def get_results(question) -> str:
@@ -132,27 +125,3 @@ def get_results(question) -> str:
             result += f"\n - [{source}]({source})"
 
     return result
-
-
-# Using the vector store directly. But this could blow out the token count
-# @retry(tries=5, delay=5)
-# def get_results(question)-> str:
-#     """Generate response using Neo4jVector using vector index only
-
-#     Args:
-#         question (str): User query
-
-#     Returns:
-#         str: Formatted string answer with citations, if available.
-#     """
-
-#     logging.info(f'Using Neo4j url: {url}')
-
-#     # Returns a dict with keys: answer, sources
-#     vector_result = vector_store.similarity_search(question, k=3)
-
-#     logging.debug(f'chain_result: {vector_result}')
-
-#     result = vector_result
-
-#     return result

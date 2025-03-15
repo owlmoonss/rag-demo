@@ -4,6 +4,7 @@ from langchain_community.vectorstores import Neo4jVector
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_ollama import OllamaEmbeddings as Ollama
 from retry import retry
 import logging
 import streamlit as st
@@ -22,12 +23,7 @@ VECTOR_GRAPH_PROMPT = PromptTemplate(
     input_variables=["question"], template=VECTOR_GRAPH_PROMPT_TEMPLATE
 )
 
-if "USER_OPENAI_API_KEY" in st.session_state:
-    openai_key = st.session_state["USER_OPENAI_API_KEY"]
-else:
-    openai_key = st.secrets["OPENAI_API_KEY"]
-
-EMBEDDING_MODEL = OpenAIEmbeddings(openai_api_key=openai_key)
+EMBEDDING_MODEL = Ollama(model="deepseek-r1")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -63,7 +59,6 @@ retrieval_query = """
         similarity as score,
         {companies: coalesce(companyName,''), managers: coalesce(managers,''), source: document.source} AS metadata
 """
-
 
 vector_store = None
 try:
@@ -105,14 +100,13 @@ if vector_store is None:
 vector_graph_retriever = vector_store.as_retriever()
 
 vector_graph_chain = RetrievalQAWithSourcesChain.from_chain_type(
-    ChatOpenAI(temperature=0, openai_api_key=openai_key),
+    ChatOpenAI(temperature=0, model='deepseek-r1', base_url='http://localhost:11434/v1'),
     chain_type="stuff",
     retriever=vector_graph_retriever,
     memory=MEMORY,
     reduce_k_below_max_tokens=True,
     max_tokens_limit=3000,
 )
-
 
 @retry(tries=2, delay=5)
 def get_results(question) -> str:

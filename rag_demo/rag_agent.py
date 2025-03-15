@@ -1,15 +1,17 @@
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain import hub  # requires langchainhub package
-from langchain_openai import OpenAI
+from pydantic_ai.models.openai import OpenAIModel as OpenAI
+from pydantic_ai.providers.openai import OpenAIProvider
 from vector_graph_tool import vector_graph_tool
 from graph_cypher_tool import graph_cypher_tool
 from vector_tool import vector_tool
 from retry import retry
 
 
+
 # Setup tools the agent will use
-llm = OpenAI(temperature=0)
+llm = OpenAI(temperature=0, model_name='deepseek-r1', provider=OpenAIProvider(base_url='http://localhost:11434/v'))
 tools = load_tools([], llm=llm)
 tools = tools + [vector_graph_tool, graph_cypher_tool, vector_tool]
 

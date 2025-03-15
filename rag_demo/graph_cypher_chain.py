@@ -2,7 +2,7 @@ from langchain.chains import GraphCypherQAChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_community.graphs import Neo4jGraph
 from langchain.prompts.prompt import PromptTemplate
-from langchain_openai import ChatOpenAI
+from langchain_ollama import OllamaEmbeddings as Ollama
 from retry import retry
 import logging
 import streamlit as st
@@ -14,7 +14,7 @@ Instructions:
 3. Always do a case-insensitive and fuzzy search for any properties related search. Eg: to search for a Company name use `toLower(c.name) contains 'neo4j'`
 4. Always use aliases to refer the node in the query
 5. Always return count(DISTINCT n) for aggregations to avoid duplicates
-6. `OWNS_STOCK_IN` relationship is syonymous with `OWNS` and `OWNER`
+6. `OWNS_STOCK_IN` relationship is synonymous with `OWNS` and `OWNER`
 7. Use examples of questions and accurate Cypher statements below to guide you.
 
 Schema:
@@ -57,35 +57,27 @@ url = st.secrets["NEO4J_URI"]
 username = st.secrets["NEO4J_USERNAME"]
 password = st.secrets["NEO4J_PASSWORD"]
 
-if "USER_OPENAI_API_KEY" in st.session_state:
-    openai_key = st.session_state["USER_OPENAI_API_KEY"]
-else:
-    openai_key = st.secrets["OPENAI_API_KEY"]
-
 graph = Neo4jGraph(
     url=url,
     username=username,
     password=password,
-    sanitize = True
+    sanitize=True
 )
 
-# Official API doc for GraphCypherQAChain at: https://api.python.langchain.com/en/latest/chains/langchain.chains.graph_qa.base.GraphQAChain.html#
+# Using Ollama's DeepSeek R model
 graph_chain = GraphCypherQAChain.from_llm(
-    cypher_llm=ChatOpenAI(
-        openai_api_key=openai_key, 
-        temperature=0, 
-        model_name="gpt-4"
+    cypher_llm=Ollama(
+        model="deepseek-r1",  # Replace with the appropriate Ollama model
+        temperature=0,
     ),
-    qa_llm=ChatOpenAI(
-        openai_api_key=openai_key, 
-        temperature=0, 
-        model_name="gpt-4"
+    qa_llm=Ollama(
+        model="deepseek-r1",  # Replace with the appropriate Ollama model
+        temperature=0,
     ),
-    validate_cypher= True,
+    validate_cypher=True,
     graph=graph,
-    verbose=True, 
-    # return_intermediate_steps = True,
-    return_direct = True
+    verbose=True,
+    return_direct=True
 )
 
 @retry(tries=2, delay=12)
@@ -100,10 +92,9 @@ def get_results(question) -> str:
     """
 
     logging.info(f'Using Neo4j database at url: {url}')
-
     graph.refresh_schema()
 
-    prompt=CYPHER_GENERATION_PROMPT.format(schema=graph.get_schema, question=question)
+    prompt = CYPHER_GENERATION_PROMPT.format(schema=graph.get_schema, question=question)
     print('Prompt:', prompt)
 
     chain_result = None
@@ -112,10 +103,10 @@ def get_results(question) -> str:
         chain_result = graph_chain.invoke({
             "query": question},
             prompt=prompt,
-            return_only_outputs = True,
+            return_only_outputs=True,
         )
     except Exception as e:
-        # Occurs when the chain can not generate a cypher statement
+        # Occurs when the chain can not generate a Cypher statement
         # for the question with the given database schema
         logging.warning(f'Handled exception running graphCypher chain: {e}')
 
@@ -125,5 +116,4 @@ def get_results(question) -> str:
         return "Sorry, I couldn't find an answer to your question"
     
     result = chain_result.get("result", None)
-
     return result
