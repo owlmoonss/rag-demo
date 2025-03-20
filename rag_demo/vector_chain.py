@@ -33,7 +33,7 @@ VECTOR_PROMPT = PromptTemplate(
     input_variables=["input", "context"], template=VECTOR_PROMPT_TEMPLATE
 )
 
-EMBEDDING_MODEL = Ollama(model="deepseek-r1")  # Replace OpenAIEmbeddings with Ollama
+EMBEDDING_MODEL = Ollama(model="llama2")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -76,16 +76,16 @@ except:
         )
         logging.debug(f"Created new index: {index_name}")
     except Exception as e:
-        logging.error(f"Failed to retrieve existing or to create a Neo4jVector: {e}")
+        logging.error(f"[vector_chain]: Failed to retrieve existing or to create a Neo4jVector: {e}")
 
 if vector_store is None:
-    logging.error(f"Failed to retrieve or create a Neo4jVector. Exiting.")
+    logging.error(f"[vector_chain]: Failed to retrieve or create a Neo4jVector. Exiting.")
     exit()
 
 vector_retriever = vector_store.as_retriever()
 
 vector_chain = RetrievalQAWithSourcesChain.from_chain_type(
-    Ollama(model="deepseek-r1"),  # Replace ChatOpenAI with Ollama
+    Ollama(model="llama2"),  # Replace ChatOpenAI with Ollama
     chain_type="stuff",
     retriever=vector_retriever,
     memory=MEMORY,
