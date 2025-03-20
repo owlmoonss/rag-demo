@@ -33,7 +33,7 @@ VECTOR_PROMPT = PromptTemplate(
     input_variables=["input", "context"], template=VECTOR_PROMPT_TEMPLATE
 )
 
-EMBEDDING_MODEL = Ollama(model="llama2")  # Replace OpenAIEmbeddings with Ollama
+EMBEDDING_MODEL = Ollama(model="gemma2")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -85,7 +85,7 @@ if vector_store is None:
 vector_retriever = vector_store.as_retriever()
 
 vector_chain = RetrievalQAWithSourcesChain.from_chain_type(
-    Ollama(model="llama2"),  # Replace ChatOpenAI with Ollama
+    Ollama(model="gemma2"),  # Replace ChatOpenAI with Ollama
     chain_type="stuff",
     retriever=vector_retriever,
     memory=MEMORY,

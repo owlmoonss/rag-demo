@@ -13,7 +13,7 @@ from langchain_ollama import ChatOllama
 
 # Setup tools the agent will use
 llm = ChatOllama(
-        model="llama2",  # Replace with the appropriate Ollama model
+        model="gemma2",  # Replace with the appropriate Ollama model
         temperature=0,
     )
 tools = load_tools([], llm=llm)
