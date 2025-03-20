@@ -7,11 +7,15 @@ from vector_graph_tool import vector_graph_tool
 from graph_cypher_tool import graph_cypher_tool
 from vector_tool import vector_tool
 from retry import retry
+from langchain_ollama import ChatOllama
 
 
 
 # Setup tools the agent will use
-llm = OpenAI(temperature=0, model_name='deepseek-r1', provider=OpenAIProvider(base_url='http://localhost:11434/v'))
+llm = ChatOllama(
+        model="llama2",  # Replace with the appropriate Ollama model
+        temperature=0,
+    )
 tools = load_tools([], llm=llm)
 tools = tools + [vector_graph_tool, graph_cypher_tool, vector_tool]
 
