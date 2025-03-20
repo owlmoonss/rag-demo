@@ -5,6 +5,7 @@ from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_ollama import OllamaEmbeddings as Ollama
+from langchain_ollama import ChatOllama
 from retry import retry
 import logging
 import streamlit as st
@@ -23,7 +24,7 @@ VECTOR_GRAPH_PROMPT = PromptTemplate(
     input_variables=["question"], template=VECTOR_GRAPH_PROMPT_TEMPLATE
 )
 
-EMBEDDING_MODEL = Ollama(model="deepseek-r1")  # Replace OpenAIEmbeddings with Ollama
+EMBEDDING_MODEL = Ollama(model="llama2")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -100,7 +101,10 @@ if vector_store is None:
 vector_graph_retriever = vector_store.as_retriever()
 
 vector_graph_chain = RetrievalQAWithSourcesChain.from_chain_type(
-    ChatOpenAI(temperature=0, model='deepseek-r1', base_url='http://localhost:11434/v1'),
+    ChatOllama(
+        model="llama2",  # Replace with the appropriate Ollama model
+        temperature=0,
+    ),
     chain_type="stuff",
     retriever=vector_graph_retriever,
     memory=MEMORY,
