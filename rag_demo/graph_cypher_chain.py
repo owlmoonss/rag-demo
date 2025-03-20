@@ -2,7 +2,7 @@ from langchain.chains import GraphCypherQAChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_community.graphs import Neo4jGraph
 from langchain.prompts.prompt import PromptTemplate
-from langchain_ollama import OllamaEmbeddings as Ollama
+from langchain_ollama import ChatOllama
 from retry import retry
 import logging
 import streamlit as st
@@ -66,18 +66,19 @@ graph = Neo4jGraph(
 
 # Using Ollama's DeepSeek R model
 graph_chain = GraphCypherQAChain.from_llm(
-    cypher_llm=Ollama(
-        model="deepseek-r1",  # Replace with the appropriate Ollama model
+    cypher_llm=ChatOllama(
+        model="llama2",  # Replace with the appropriate Ollama model
         temperature=0,
     ),
-    qa_llm=Ollama(
-        model="deepseek-r1",  # Replace with the appropriate Ollama model
+    qa_llm=ChatOllama(
+        model="llama2",  # Replace with the appropriate Ollama model
         temperature=0,
     ),
     validate_cypher=True,
     graph=graph,
     verbose=True,
-    return_direct=True
+    return_direct=True,
+    allow_dangerous_requests=True
 )
 
 @retry(tries=2, delay=12)
