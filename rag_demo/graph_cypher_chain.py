@@ -67,11 +67,11 @@ graph = Neo4jGraph(
 # Using Ollama's DeepSeek R model
 graph_chain = GraphCypherQAChain.from_llm(
     cypher_llm=ChatOllama(
-        model="gemma2",  # Replace with the appropriate Ollama model
+        model="qwen2",  # Replace with the appropriate Ollama model
         temperature=0,
     ),
     qa_llm=ChatOllama(
-        model="gemma2",  # Replace with the appropriate Ollama model
+        model="qwen2",  # Replace with the appropriate Ollama model
         temperature=0,
     ),
     validate_cypher=True,

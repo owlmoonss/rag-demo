@@ -24,7 +24,7 @@ VECTOR_GRAPH_PROMPT = PromptTemplate(
     input_variables=["question"], template=VECTOR_GRAPH_PROMPT_TEMPLATE
 )
 
-EMBEDDING_MODEL = Ollama(model="gemma2")  # Replace OpenAIEmbeddings with Ollama
+EMBEDDING_MODEL = Ollama(model="qwen2")  # Replace OpenAIEmbeddings with Ollama
 MEMORY = ConversationBufferMemory(
     memory_key="chat_history",
     input_key="question",
@@ -102,7 +102,7 @@ vector_graph_retriever = vector_store.as_retriever()
 
 vector_graph_chain = RetrievalQAWithSourcesChain.from_chain_type(
     ChatOllama(
-        model="gemma2",  # Replace with the appropriate Ollama model
+        model="qwen2",  # Replace with the appropriate Ollama model
         temperature=0,
     ),
     chain_type="stuff",

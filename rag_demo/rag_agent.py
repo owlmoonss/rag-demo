@@ -13,7 +13,7 @@ from langchain_ollama import ChatOllama
 
 # Setup tools the agent will use
 llm = ChatOllama(
-        model="gemma2",  # Replace with the appropriate Ollama model
+        model="qwen2",  # Replace with the appropriate Ollama model
         temperature=0,
     )
 tools = load_tools([], llm=llm)
@@ -37,7 +37,8 @@ agent_executor = AgentExecutor(
 
 @retry(tries=2, delay=20)
 def get_results(question, callbacks) -> dict:
-    """Starts a LangChain agent to generate an answer using one of several Neo4j RAG tools.
+    """
+    Starts a LangChain agent to generate an answer using one of several Neo4j RAG tools.
 
     Args:
         question (str): User query
@@ -46,6 +47,21 @@ def get_results(question, callbacks) -> dict:
     Returns:
         dict: Final answer as a dict with the keys: input, output, intermediate_steps
     """
-
     response = agent_executor.invoke({"input": question}, callbacks=callbacks)
-    return response
+
+    # Extract more info from the response
+    full_input = response.get("input")
+    final_output = response.get("output")
+    intermediate_steps = response.get("intermediate_steps")
+
+    # Optional: extract tool names used
+    tools_used = [step[0] for step in intermediate_steps] if intermediate_steps else []
+
+    return {
+        "input": full_input,
+        "output": final_output,
+        "intermediate_steps": intermediate_steps,
+        "tools_used": tools_used,
+    }
+
+
