@@ -7,7 +7,7 @@ from retry import retry
 import logging
 import streamlit as st
 
-CYPHER_GENERATION_TEMPLATE = """Task: Generate Cypher statement to query a graph database strictly based on the schema and instructions provided.
+CYPHER_GENERATION_TEMPLATE = """Task: You are a master of technology especially cypher language. Generate Cypher statement to query a graph database strictly based on the schema and instructions provided.
 Instructions:
 1. Use only nodes, relationships, and properties mentioned in the schema.
 2. Always enclose the Cypher output inside 3 backticks. Do not add 'cypher' after the backticks.
@@ -20,25 +20,6 @@ Instructions:
 Schema:
 {schema}
 
-Examples: Here are a few examples of generated Cypher statements for particular questions:
-
-# How many Managers own Companies?
-MATCH (m:Manager)-[:OWNS_STOCK_IN]->(c:Company)
-RETURN count(DISTINCT m)
-
-# How many companies are in filings?
-MATCH (c:Company) 
-RETURN count(DISTINCT c)
-
-# Which companies are vulnerable to material shortage?
-MATCH (co:Company)-[fi]-(f:Form)-[po]-(c:Chunk)
-WHERE toLower(c.text) CONTAINS "material"
-RETURN DISTINCT count(c) as chunks, co.name ORDER BY chunks desc
-
-# Which companies are in a specific industry?
-MATCH (co:Company)-[fi]-(f:Form)-[po]-(c:Chunk)
-WHERE toLower(c.text) CONTAINS "industryName"
-RETURN DISTINCT count(c) as chunks, co.name ORDER BY chunks desc
 
 The question is:
 {question}"""
@@ -111,8 +92,6 @@ def get_results(question) -> str:
         # for the question with the given database schema
         logging.warning(f'Handled exception running graphCypher chain: {e}')
 
-    logging.debug(f'chain_result: {chain_result}')
-
     if chain_result is None:
         return "Sorry, I couldn't find an answer to your question"
     
@@ -138,4 +117,6 @@ def get_results(question) -> str:
     # or raise an exception
     
     result = chain_result.get("result", None)
+    logging.debug(f'chain_result: {result}')
+
     return result
