@@ -1,3 +1,4 @@
+import json
 from langchain.chains import GraphCypherQAChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_community.graphs import Neo4jGraph
@@ -118,5 +119,8 @@ def get_results(question) -> str:
     
     result = chain_result.get("result", None)
     logging.debug(f'chain_result: {result}')
+    print(json.dumps(chain_result, indent=2))
+    for node in chain_result.get('nodes', []):
+        print(node)
 
     return result
