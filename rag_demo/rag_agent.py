@@ -5,6 +5,7 @@ from pydantic_ai.models.openai import OpenAIModel as OpenAI
 from pydantic_ai.providers.openai import OpenAIProvider
 from vector_graph_tool import vector_graph_tool
 from graph_cypher_tool import graph_cypher_tool
+from graph_tool import graph_tool
 from vector_tool import vector_tool
 from retry import retry
 from langchain_ollama import ChatOllama
@@ -17,7 +18,7 @@ llm = ChatOllama(
         temperature=0,
     )
 tools = load_tools([], llm=llm)
-tools = tools + [vector_graph_tool, graph_cypher_tool, vector_tool]
+tools = tools + [graph_cypher_tool, graph_tool]
 
 
 # REACT AGENT EXECUTOR

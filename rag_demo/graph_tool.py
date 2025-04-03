@@ -1,5 +1,5 @@
 from langchain.tools import tool
-from graph_chain import get_results
+from graph_cypher_chain import get_results
 
 @tool("graph-tool")
 def graph_tool(query:str) -> str:

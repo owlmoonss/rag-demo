@@ -116,5 +116,26 @@ def get_results(question) -> str:
     if chain_result is None:
         return "Sorry, I couldn't find an answer to your question"
     
+    logging.info(f'Chain result: {chain_result}')
+    # Extract the result from the chain result
+    # The result is typically in the "result" key of the chain result
+    # Adjust this based on the actual structure of the chain result
+    # For example, if the result is in the "output" key, use that instead
+    # If the chain result is a list, extract the first element
+    # if isinstance(chain_result, list) and len(chain_result) > 0:
+    #     result = chain_result[0]
+    # else:
+    #     result = chain_result
+    # If the chain result is a dictionary, extract the "result" key
+    # If the chain result is a string, return it directly
+    # If the chain result is None or empty, return a default message
+    # or raise an exception
+    # Adjust this based on the actual structure of the chain result
+    # For example, if the result is in the "output" key, use that instead
+    # If the chain result is a dictionary, extract the "result" key
+    # If the chain result is a string, return it directly
+    # If the chain result is None or empty, return a default message
+    # or raise an exception
+    
     result = chain_result.get("result", None)
     return result
