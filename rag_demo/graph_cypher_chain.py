@@ -1,29 +1,42 @@
 import json
+import logging
+import streamlit as st
+from retry import retry
 from langchain.chains import GraphCypherQAChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
 from langchain_community.graphs import Neo4jGraph
 from langchain.prompts.prompt import PromptTemplate
 from langchain_ollama import ChatOllama
-from retry import retry
-import logging
-import streamlit as st
 
-CYPHER_GENERATION_TEMPLATE = """Task: You are a master of technology especially cypher language. Generate Cypher statement to query a graph database strictly based on the schema and instructions provided.
+# ✅ Updated Cypher generation prompt template
+CYPHER_GENERATION_TEMPLATE = """Task: You are a Cypher expert. Generate an accurate Cypher query ONLY using the schema below.
+
 Instructions:
-1. Use only nodes, relationships, and properties mentioned in the schema.
-2. Always enclose the Cypher output inside 3 backticks. Do not add 'cypher' after the backticks.
-3. Always do a case-insensitive and fuzzy search for any properties related search. Eg: to search for a Company name use `toLower(c.name) contains 'neo4j'`
-4. Always use aliases to refer the node in the query
-5. Always return count(DISTINCT n) for aggregations to avoid duplicates
-6. `OWNS_STOCK_IN` relationship is synonymous with `OWNS` and `OWNER`
-7. Use examples of questions and accurate Cypher statements below to guide you.
+1. Use only the node labels, relationship types, and properties from the schema.
+   Avoid adding labels like `:Location` unless explicitly required. Prefer using just `{{Name: "..."}}` if the label is not critical.
+2. Return fields like paper.title, location.name — never return paths like `p`.
+3. Always do case-insensitive partial string matching:
+   Use `toLower()` on both sides like `toLower(node.property) CONTAINS toLower("value")` to make matching safe.
+4. Always wrap the Cypher query in triple backticks (```)
+5. Add LIMIT 10 unless specified otherwise.
 
 Schema:
 {schema}
 
+Example Question 1: Which papers mention anomalous temperature regimes such as cold air outbreaks (CAOs) or warm waves (WWs) in relation to North America, specifically in the sentences where these terms appear?
 
-The question is:
-{question}"""
+Example Cypher:
+MATCH (we)-[:TargetsLocation]-(l{{Name:"NORTH_AMERICA"}})
+MATCH (p:Paper)-[m:Mention]-(we) 
+WHERE toLower(m.Mention_Sentence) CONTAINS toLower("WW") OR toLower(m.Mention_Sentence) CONTAINS toLower("CAOs")
+RETURN p, l, we;
+
+Now generate a Cypher query for:
+
+{question}
+"""
+
+
 
 CYPHER_GENERATION_PROMPT = PromptTemplate(
     input_variables=["schema", "question"], template=CYPHER_GENERATION_TEMPLATE
@@ -33,8 +46,10 @@ MEMORY = ConversationBufferMemory(
     memory_key="chat_history", 
     input_key='question', 
     output_key='answer', 
-    return_messages=True)
+    return_messages=True
+)
 
+# Neo4j connection
 url = st.secrets["NEO4J_URI"]
 username = st.secrets["NEO4J_USERNAME"]
 password = st.secrets["NEO4J_PASSWORD"]
@@ -46,81 +61,77 @@ graph = Neo4jGraph(
     sanitize=True
 )
 
-# Using Ollama's DeepSeek R model
+# ✅ Custom schema manually defined for prompt clarity
+custom_schema = """
+Nodes:
+- Paper(title: String)
+- WeatherEvent(Name: String)
+- Model(Name: String)
+- Teleconnection(Name: String)
+- OceanCirculation(Name: String)
+- Location(Name: String)
+- Project(Name: String)
+
+Relationships:
+- (Paper)-[:Mention {Mention_Sentence: String}]->(WeatherEvent)
+- (Paper)-[:Mention {Mention_Sentence: String}]->(Model)
+- (Paper)-[:Mention {Mention_Sentence: String}]->(Teleconnection)
+- (Paper)-[:Mention {Mention_Sentence: String}]->(OceanCirculation)
+- (WeatherEvent)-[:TargetsLocation]->(Location)
+- (Model)-[:TargetsLocation]->(Location)
+- (Teleconnection)-[:TargetsLocation]->(Location)
+- (OceanCirculation)-[:TargetsLocation]->(Location)
+"""
+
+# LangChain chain with Ollama model
 graph_chain = GraphCypherQAChain.from_llm(
-    cypher_llm=ChatOllama(
-        model="qwen2",  # Replace with the appropriate Ollama model
-        temperature=0,
-    ),
-    qa_llm=ChatOllama(
-        model="qwen2",  # Replace with the appropriate Ollama model
-        temperature=0,
-    ),
-    validate_cypher=True,
+    cypher_llm=ChatOllama(model="qwen2", temperature=0),
+    qa_llm=ChatOllama(model="qwen2", temperature=0),
     graph=graph,
-    verbose=True,
+    cypher_prompt=CYPHER_GENERATION_PROMPT,  # ✅ pass the custom prompt
+    validate_cypher=True,
     return_direct=True,
+    verbose=True,
     allow_dangerous_requests=True
 )
 
+
 @retry(tries=2, delay=12)
 def get_results(question) -> str:
-    """Generate a response from a GraphCypherQAChain targeted at generating answered related to relationships. 
-
-    Args:
-        question (str): User query
-
-    Returns:
-        str: Answer from chain
-    """
-
-    logging.info(f'Using Neo4j database at url: {url}')
+    """Generate a response from the GraphCypherQAChain using a cleaned schema and improved prompt."""
+    
+    logging.info(f'Using Neo4j database at URL: {url}')
     graph.refresh_schema()
 
-    prompt = CYPHER_GENERATION_PROMPT.format(schema=graph.get_schema, question=question)
-    print('Prompt:', prompt)
+    # 🔙 Log full Neo4j schema in terminal
+    print("\n========= Raw Schema from Neo4j =========\n")
+    print(graph.get_schema)
 
-    chain_result = None
+    # ✅ Use custom schema instead of auto-generated
+    prompt = CYPHER_GENERATION_PROMPT.format(schema=custom_schema, question=question)
+    print('\n========= Prompt to LLM =========\n')
+    print(prompt)
 
     try:
-        chain_result = graph_chain.invoke({
-            "query": question},
+        chain_result = graph_chain.invoke(
+            {"query": question},
             prompt=prompt,
             return_only_outputs=True,
         )
     except Exception as e:
-        # Occurs when the chain can not generate a Cypher statement
-        # for the question with the given database schema
-        logging.warning(f'Handled exception running graphCypher chain: {e}')
+        logging.warning(f'Handled exception running GraphCypher chain: {e}')
+        return "Sorry, I couldn't find an answer to your question"
 
     if chain_result is None:
-        return "Sorry, I couldn't find an answer to your question"
-    
-    logging.info(f'Chain result: {chain_result}')
-    # Extract the result from the chain result
-    # The result is typically in the "result" key of the chain result
-    # Adjust this based on the actual structure of the chain result
-    # For example, if the result is in the "output" key, use that instead
-    # If the chain result is a list, extract the first element
-    # if isinstance(chain_result, list) and len(chain_result) > 0:
-    #     result = chain_result[0]
-    # else:
-    #     result = chain_result
-    # If the chain result is a dictionary, extract the "result" key
-    # If the chain result is a string, return it directly
-    # If the chain result is None or empty, return a default message
-    # or raise an exception
-    # Adjust this based on the actual structure of the chain result
-    # For example, if the result is in the "output" key, use that instead
-    # If the chain result is a dictionary, extract the "result" key
-    # If the chain result is a string, return it directly
-    # If the chain result is None or empty, return a default message
-    # or raise an exception
-    
+        return "No answer was generated."
+
+    # ✅ Debug: show Cypher used
+    cypher_query = chain_result.get("cypher", "No Cypher returned")
+    print("\n========= Generated Cypher Query =========\n")
+    print(cypher_query)
+
     result = chain_result.get("result", None)
-    logging.debug(f'chain_result: {result}')
+    print("\n========= Final Result =========\n")
     print(json.dumps(chain_result, indent=2))
-    for node in chain_result.get('nodes', []):
-        print(node)
 
     return result
