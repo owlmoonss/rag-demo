@@ -73,14 +73,19 @@ Nodes:
 - Project(Name: String)
 
 Relationships:
+# Mention relationships with context sentence
 - (Paper)-[:Mention {Mention_Sentence: String}]->(WeatherEvent)
 - (Paper)-[:Mention {Mention_Sentence: String}]->(Model)
 - (Paper)-[:Mention {Mention_Sentence: String}]->(Teleconnection)
 - (Paper)-[:Mention {Mention_Sentence: String}]->(OceanCirculation)
+
+# Target location of events, models, processes
 - (WeatherEvent)-[:TargetsLocation]->(Location)
 - (Model)-[:TargetsLocation]->(Location)
 - (Teleconnection)-[:TargetsLocation]->(Location)
 - (OceanCirculation)-[:TargetsLocation]->(Location)
+
+
 """
 
 # LangChain chain with Ollama model
@@ -104,8 +109,8 @@ def get_results(question) -> str:
     graph.refresh_schema()
 
     # 🔙 Log full Neo4j schema in terminal
-    print("\n========= Raw Schema from Neo4j =========\n")
-    print(graph.get_schema)
+    #print("\n========= Raw Schema from Neo4j =========\n")
+    #print(graph.get_schema)
 
     # ✅ Use custom schema instead of auto-generated
     prompt = CYPHER_GENERATION_PROMPT.format(schema=custom_schema, question=question)
