@@ -8,7 +8,6 @@ from langchain_community.graphs import Neo4jGraph
 from langchain.prompts.prompt import PromptTemplate
 from langchain_ollama import ChatOllama
 
-# ✅ Updated Cypher generation prompt template
 CYPHER_GENERATION_TEMPLATE = """Task: You are a Cypher expert. Generate an accurate Cypher query ONLY using the schema below.
 
 Instructions:
@@ -61,7 +60,7 @@ graph = Neo4jGraph(
     sanitize=True
 )
 
-# ✅ Custom schema manually defined for prompt clarity
+
 custom_schema = """
 Nodes:
 - Paper(title: String)
@@ -88,12 +87,11 @@ Relationships:
 
 """
 
-# LangChain chain with Ollama model
 graph_chain = GraphCypherQAChain.from_llm(
     cypher_llm=ChatOllama(model="qwen2", temperature=0),
     qa_llm=ChatOllama(model="qwen2", temperature=0),
     graph=graph,
-    cypher_prompt=CYPHER_GENERATION_PROMPT,  # ✅ pass the custom prompt
+    cypher_prompt=CYPHER_GENERATION_PROMPT,  
     validate_cypher=True,
     return_direct=True,
     verbose=True,
