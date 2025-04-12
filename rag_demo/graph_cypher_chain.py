@@ -111,7 +111,7 @@ def get_results(question) -> str:
     #print(graph.get_schema)
 
     # ✅ Use custom schema instead of auto-generated
-    prompt = CYPHER_GENERATION_PROMPT.format(schema=custom_schema, question=question)
+    prompt = CYPHER_GENERATION_PROMPT.format(schema=graph.get_schema, question=question)
     print('\n========= Prompt to LLM =========\n')
     print(prompt)
 
