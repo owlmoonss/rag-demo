@@ -15,7 +15,7 @@ conversation_history = []
 def process_with_llm(question: str) -> str:
     """Decide if a DB query is needed, and generate a response accordingly."""
     
-    # === 1. Chuẩn bị phần hội thoại lịch sử (nếu có) ===
+    # === 1. Prepare conversation history (if any) ===
     conversation_text = "\n".join([
         f"User: {msg['input']}\nBot: {msg['output']}"
         for msg in conversation_history
@@ -24,7 +24,7 @@ def process_with_llm(question: str) -> str:
     tool_output = graph_cypher_tool.invoke(question)
     tool_output_str = str(tool_output)
         
-    # Gửi prompt đầy đủ để xử lý dữ liệu đã truy vấn
+    # Send full prompt to process queried data
     final_prompt = f"""
 Based on the conversation and the user question, provide a relevant and helpful response.
 
@@ -41,7 +41,7 @@ Please process the output and answer the user question clearly.
         
     final_response = llm.predict(final_prompt).strip()
     
-    # === 5. Cập nhật lịch sử hội thoại ===
+    # === 5. Update conversation history ===
     conversation_history.append({
         "input": question,
         "output": final_response
@@ -53,10 +53,10 @@ Please process the output and answer the user question clearly.
 def get_results(question: str) -> dict:
     llm_processed_output = process_with_llm(question=question)
 
-    # 3. Trả về kết quả bao gồm cả đầu ra từ tool và kết quả xử lý của LLM
+    # 3. Return the result including both the tool output and the LLM response
     return {
-        "input": question,  # Đầu vào từ người dùng
-        "output": llm_processed_output,  # Đầu ra sau khi xử lý bằng LLM
-        # "intermediate_steps": tool_result["intermediate_steps"],  # Các bước trung gian (nếu có)
-        # "tools_used": tool_result["tools_used"],  # Danh sách các tool đã sử dụng
+        "input": question,  # User input
+        "output": llm_processed_output,  # Output after processing with LLM
+        # "intermediate_steps": tool_result["intermediate_steps"],  # Intermediate steps (if any)
+        # "tools_used": tool_result["tools_used"],  # List of tools used
     }

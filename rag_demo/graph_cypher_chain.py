@@ -163,11 +163,10 @@ def get_results(question) -> str:
     logging.info(f'Using Neo4j database at URL: {url}')
     graph.refresh_schema()
 
-    # 🔙 Log full Neo4j schema in terminal
+    #Log full Neo4j schema in terminal
     #print("\n========= Raw Schema from Neo4j =========\n")
     #print(graph.get_schema)
 
-    # ✅ Use custom schema instead of auto-generated
     prompt = CYPHER_GENERATION_PROMPT.format(schema=graph.get_schema, question=question)
     print('\n========= Prompt to LLM =========\n')
     print(prompt)
@@ -186,7 +185,7 @@ def get_results(question) -> str:
         print('No answer was generated.')
         return "No answer was generated."
 
-    # ✅ Debug: show Cypher used
+    # Debug: show Cypher used
     cypher_query = chain_result.get("cypher", "No Cypher returned")
     print("\n========= Generated Answer=========\n")
     print(cypher_query)
