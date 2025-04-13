@@ -10,6 +10,7 @@ from streamlit_feedback import streamlit_feedback
 from constants import TITLE
 import logging
 import rag_agent
+import graph_cypher_chain
 import streamlit as st
 from sidebar import sidebar
 
@@ -88,7 +89,7 @@ if user_input:
                 # StreamlitCcallbackHandler api doc: https://api.python.langchain.com/en/latest/callbacks/langchain_community.callbacks.streamlit.streamlit_callback_handler.StreamlitCallbackHandler.html
 
                 agent_response = rag_agent.get_results(
-                    question=user_input, callbacks=[]
+                    question=user_input,
                 )
 
                 if isinstance(agent_response, dict) is False:

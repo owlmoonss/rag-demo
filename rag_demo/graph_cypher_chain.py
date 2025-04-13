@@ -8,27 +8,62 @@ from langchain_community.graphs import Neo4jGraph
 from langchain.prompts.prompt import PromptTemplate
 from langchain_ollama import ChatOllama
 
-CYPHER_GENERATION_TEMPLATE = """Task: You are a Cypher expert. Generate an accurate Cypher query ONLY using the schema below.
+CYPHER_GENERATION_TEMPLATE = """
+Task: Generate an accurate Cypher query ONLY using the schema below.
 
-Instructions:
-1. Use only the node labels, relationship types, and properties from the schema.
-   Avoid adding labels like `:Location` unless explicitly required. Prefer using just `{{Name: "..."}}` if the label is not critical.
-2. Return fields like paper.title, location.name — never return paths like `p`.
-3. Always do case-insensitive partial string matching:
-   Use `toLower()` on both sides like `toLower(node.property) CONTAINS toLower("value")` to make matching safe.
-4. Always wrap the Cypher query in triple backticks (```)
-5. Add LIMIT 10 unless specified otherwise.
 
 Schema:
 {schema}
 
-Example Question 1: Which papers mention anomalous temperature regimes such as cold air outbreaks (CAOs) or warm waves (WWs) in relation to North America, specifically in the sentences where these terms appear?
+This example:
 
-Example Cypher:
+Question:
+Which papers mention anomalous temperature regimes such as cold air outbreaks (CAOs) or
+warm waves (WWs) in relation to North America, specifically in the sentences where these
+terms appear?
+Answer:
 MATCH (we)-[:TargetsLocation]-(l{{Name:"NORTH_AMERICA"}})
-MATCH (p:Paper)-[m:Mention]-(we) 
-WHERE toLower(m.Mention_Sentence) CONTAINS toLower("WW") OR toLower(m.Mention_Sentence) CONTAINS toLower("CAOs")
+MATCH (p:Paper)-[m:Mention]-(we)
+WHERE toLower(m.Mention_Sentence) CONTAINS toLower("WW") 
+   OR toLower(m.Mention_Sentence) CONTAINS toLower("CAOs")
 RETURN p, l, we;
+
+
+Question:
+Which papers discuss ocean circulation processes—such as thermohaline circulation—in oceanic
+regions that include either “North” or “South” in their names?
+Answer:
+MATCH (n:Location) 
+WHERE toLower(n.Name) CONTAINS toLower("OCEAN") 
+  AND (toLower(n.Name) CONTAINS toLower("NORTH") OR toLower(n.Name) CONTAINS toLower("SOUTH"))
+MATCH (oc:OceanCirculation)-[:TargetsLocation]-(l)
+MATCH (p:Paper)-[m:Mention]-(oc)
+WHERE toLower(m.Mention_Sentence) CONTAINS toLower("thermohaline circulation")
+RETURN n, oc, p;
+
+
+Question:
+Which papers mention CMIP5 models and the North Atlantic Oscillation (NAO) in the context of
+the Southeast United States?
+Answer:
+MATCH (p:Paper)-[r:Mention]->(m:Model|Project)
+WHERE toLower(m.Name) CONTAINS toLower("CMIP_5")
+MATCH (p)-[t:Mention]-(n:Teleconnection{{Name:"NORTH_ATLANTIC_OSCILLATION"}})
+WHERE toLower(t.Mention_Sentence) CONTAINS toLower("Southeast")
+RETURN p, m, n;
+
+
+Question:
+Which papers mention the Pacific-North American (PNA) pattern in connection with locations in
+the United States?
+Answer
+MATCH (p:Paper)-[:Mention]->(t:Teleconnection{{Name:"PACIFIC_NORTH_AMERICAN_PNA_PATTERN"}})
+MATCH (t)-[:TargetsLocation]-(l:Location)
+MATCH (p)-[:Mention]-(l)
+WHERE toLower(l.wikidata_description) CONTAINS toLower("United States")
+RETURN p, t, l;
+
+
 
 Now generate a Cypher query for:
 
@@ -60,32 +95,6 @@ graph = Neo4jGraph(
     sanitize=True
 )
 
-
-custom_schema = """
-Nodes:
-- Paper(title: String)
-- WeatherEvent(Name: String)
-- Model(Name: String)
-- Teleconnection(Name: String)
-- OceanCirculation(Name: String)
-- Location(Name: String)
-- Project(Name: String)
-
-Relationships:
-# Mention relationships with context sentence
-- (Paper)-[:Mention {Mention_Sentence: String}]->(WeatherEvent)
-- (Paper)-[:Mention {Mention_Sentence: String}]->(Model)
-- (Paper)-[:Mention {Mention_Sentence: String}]->(Teleconnection)
-- (Paper)-[:Mention {Mention_Sentence: String}]->(OceanCirculation)
-
-# Target location of events, models, processes
-- (WeatherEvent)-[:TargetsLocation]->(Location)
-- (Model)-[:TargetsLocation]->(Location)
-- (Teleconnection)-[:TargetsLocation]->(Location)
-- (OceanCirculation)-[:TargetsLocation]->(Location)
-
-
-"""
 
 graph_chain = GraphCypherQAChain.from_llm(
     cypher_llm=ChatOllama(model="qwen2", temperature=0),
@@ -124,17 +133,17 @@ def get_results(question) -> str:
     except Exception as e:
         logging.warning(f'Handled exception running GraphCypher chain: {e}')
         return "Sorry, I couldn't find an answer to your question"
-
+    
     if chain_result is None:
         return "No answer was generated."
 
     # ✅ Debug: show Cypher used
     cypher_query = chain_result.get("cypher", "No Cypher returned")
-    print("\n========= Generated Cypher Query =========\n")
+    print("\n========= Generated Answer=========\n")
     print(cypher_query)
 
     result = chain_result.get("result", None)
     print("\n========= Final Result =========\n")
     print(json.dumps(chain_result, indent=2))
 
-    return result
+    return chain_result
