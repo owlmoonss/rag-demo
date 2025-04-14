@@ -9,6 +9,7 @@ from langchain.prompts.prompt import PromptTemplate
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 
+
 CYPHER_GENERATION_TEMPLATE = """
 You are a Cypher expert who translates natural language questions into Cypher queries for a Neo4j graph database. 
 The database contains entities such as:
@@ -34,17 +35,13 @@ Properties include:
 - A common type of question is: "What [scientific concept] are discussed in relation to [location] and involving [mechanism/phenomenon]?"
 - The Cypher query often starts by matching a domain concept (e.g., OceanCirculation) and the location it's associated with.
 - Then it retrieves papers mentioning that concept, filtering by keywords in the mention sentence.
-When a question involves both a *scientific process* (e.g., upwelling) and a *geographical region* (e.g., Southern Ocean), first match entities representing the process (like OceanCirculation) that are linked to the region using :TargetsLocation. Then find papers mentioning those processes where the mention text contains the target concept (e.g., upwelling).
-Some questions require understanding the relationship between a scientific process and a region, like the Southern Ocean. OceanCirculation entities are typically linked to Location nodes via the :TargetsLocation relation. If a specific process like "upwelling" is involved, the :Mention relationship's Mention_Sentence field can be used to filter relevant context in papers. Use this reasoning to write Cypher queries.
-Entities like OceanCirculation, Teleconnection, and Paper are connected via various relationships. Each Paper can mention a concept using a :Mention relationship, which includes a field called Mention_Sentence.
-
-Use Mention_Sentence to filter for specific keywords or phenomena that appear in the paper's context. For example, when a user asks about a certain process like “upwelling,” you can search for papers that mention that process by filtering the Mention_Sentence field.
-
-Also, many scientific processes (e.g., OceanCirculation) are geographically grounded. You can find such processes using the :TargetsLocation relationship with a Location node. Locations often include names like “Southern Ocean”, “North Atlantic”, or “Southeast United States”.
-
-If the question refers to regions or physical processes, combine both semantic filtering via Mention_Sentence and geographic filtering using TargetsLocation.
+- **Always use `[m:Mention]` when matching the mention relationship, never `[m]` or `[:Mention]`.**
+- **Use labels like `:WeatherEvent`, `:OceanCirculation`, etc., only when the natural language question explicitly refers to the concept. Otherwise, leave the node unlabeled.**
+- **Wrap multiple conditions in WHERE clauses (e.g., with OR/AND) inside parentheses to preserve logic clarity.**
+- **When using a Location name in a Cypher match, convert it to all uppercase and replace spaces with underscores. (e.g., "North Atlantic" → "NORTH_ATLANTIC")**
 
 Important: Never use [:Mention] in query and Name of Location always uppercase and replace space with _ (example "North Atlantic" becomes "NORTH_ATLANTIC").
+
 The following is the schema of the Neo4j database. The schema is a simplified representation of the graph database, showing the types of nodes and relationships present in the database. The schema includes nodes for Paper, Location, OceanCirculation, WeatherEvent, Teleconnection, and Model or Project, along with their respective properties and relationships.
 
 
@@ -102,6 +99,7 @@ MATCH (t)-[:TargetsLocation]-(l:Location)
 MATCH (p)-[z:Mention]-(l) 
 WHERE l.wikidata_description CONTAINS "United States" 
 RETURN p,t,l;
+
 
 ---
 
