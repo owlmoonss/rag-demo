@@ -1,6 +1,7 @@
 import json
 import logging
 import streamlit as st
+import urllib.parse
 from retry import retry
 from langchain.chains import GraphCypherQAChain
 from langchain.chains.conversation.memory import ConversationBufferMemory
@@ -134,23 +135,24 @@ graph = Neo4jGraph(
 
 
 graph_chain = GraphCypherQAChain.from_llm(
-    # cypher_llm=ChatOllama(model="qwen2", temperature=0),
-    # qa_llm=ChatOllama(model="qwen2", temperature=0),
+    #cypher_llm=ChatOllama(model="qwen2", temperature=0),
+    #qa_llm=ChatOllama(model="qwen2", temperature=0),
     cypher_llm=ChatOpenAI(
-        openai_api_key=st.secrets["OPENAI_API_KEY"], 
-        temperature=0, 
-        model_name="gpt-4o-mini"
-    ),
-    qa_llm=ChatOpenAI(
-        openai_api_key=st.secrets["OPENAI_API_KEY"], 
-        temperature=0, 
-        model_name="gpt-4o-mini"),
+         openai_api_key=st.secrets["OPENAI_API_KEY"], 
+         temperature=0, 
+         model_name="gpt-4o-mini"
+     ),
+     qa_llm=ChatOpenAI(
+         openai_api_key=st.secrets["OPENAI_API_KEY"], 
+         temperature=0, 
+         model_name="gpt-4o-mini"),
     graph=graph,
     cypher_prompt=CYPHER_GENERATION_PROMPT,  
     validate_cypher=True,
     return_direct=True,
     verbose=True,
-    allow_dangerous_requests=True
+    allow_dangerous_requests=True,
+    return_intermediate_steps=True,
 )
 
 
@@ -191,5 +193,11 @@ def get_results(question) -> str:
     result = chain_result.get("result", None)
     print("\n========= Final Result =========\n")
     print(json.dumps(chain_result, indent=2))
+    
+    try:
+        query = chain_result["intermediate_steps"][-1]["query"].replace("cypher", "", 1).strip()
+        chain_result["intermediate_steps"][-1]["query"] = urllib.parse.quote(query)
+    except Exception as e:
+        pass
 
     return chain_result

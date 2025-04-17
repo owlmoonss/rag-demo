@@ -4,12 +4,12 @@ from langchain_openai import ChatOpenAI
 from graph_cypher_tool import graph_cypher_tool
 import streamlit as st
 
-# llm = Ollama(model="llama3")
+#llm = Ollama(model="llama3")
 llm = ChatOpenAI(
-    openai_api_key=st.secrets["OPENAI_API_KEY"],
-    temperature=0.2,
-    model_name="gpt-4o-mini"
-)
+     openai_api_key=st.secrets["OPENAI_API_KEY"],
+     temperature=0.2,
+     model_name="gpt-4o-mini"
+ )
 conversation_history = []
 
 def process_with_llm(question: str) -> str:
@@ -36,10 +36,14 @@ Current question: {question}
 Here is the output from the database:
 {tool_output_str}
 
-Please process the output and answer the user question clearly.
+Please process the output and answer the user question clearly. If the output `result` is not empty please add [[button_query]] in last answer.
     """.strip()
         
     final_response = llm.predict(final_prompt).strip()
+    
+    final_response = final_response.replace("[[button_query]]", """
+[Open Neo4J](http://localhost:7474/browser/?cmd=edit&arg=""" + tool_output["intermediate_steps"][-1]["query"] +")"
+)
     
     # === 5. Update conversation history ===
     conversation_history.append({
