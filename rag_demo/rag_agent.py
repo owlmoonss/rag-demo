@@ -1,30 +1,34 @@
+import streamlit as st
 from retry import retry
 from langchain_community.llms import Ollama
 from langchain_openai import ChatOpenAI
-from graph_cypher_tool import graph_cypher_tool
-import streamlit as st
+from graph_cypher_tool import graph_cypher_tool  # Make sure this is defined correctly
 
-#llm = Ollama(model="llama3")
+# Choose one of the LLMs
+# llm = Ollama(model="llama3")
 llm = ChatOpenAI(
-     openai_api_key=st.secrets["OPENAI_API_KEY"],
-     temperature=0.2,
-     model_name="gpt-4o-mini"
- )
+    openai_api_key=st.secrets["OPENAI_API_KEY"],
+    temperature=0.2,
+    model_name="gpt-4o-mini"
+)
+
+# Conversation history
 conversation_history = []
 
 def process_with_llm(question: str) -> str:
-    """Decide if a DB query is needed, and generate a response accordingly."""
-    
-    # === 1. Prepare conversation history (if any) ===
+    """Uses LLM to respond based on prior messages and graph result."""
+
+    # 1. Build past conversation text
     conversation_text = "\n".join([
         f"User: {msg['input']}\nBot: {msg['output']}"
         for msg in conversation_history
     ])
-    
+
+    # 2. Run the question through the Cypher tool
     tool_output = graph_cypher_tool.invoke(question)
-    tool_output_str = str(tool_output)
-        
-    # Send full prompt to process queried data
+    result_only = tool_output.get("result", "No results found.")
+
+    # 3. LLM prompt with only the result
     final_prompt = f"""
 Based on the conversation and the user question, provide a relevant and helpful response.
 
@@ -34,33 +38,38 @@ Conversation:
 Current question: {question}
 
 Here is the output from the database:
-{tool_output_str}
+{result_only}
 
-Please process the output and answer the user question clearly. If the output `result` is not empty please add [[button_query]] in last answer.
+Please process the output and answer the user question clearly. If the output is not empty please add [[button_query]] in last answer.
     """.strip()
-        
+
     final_response = llm.predict(final_prompt).strip()
-    
-    final_response = final_response.replace("[[button_query]]", """
-[Open Neo4J](http://localhost:7474/browser/?cmd=edit&arg=""" + tool_output["intermediate_steps"][-1]["query"] +")"
-)
-    
-    # === 5. Update conversation history ===
+
+    # 4. Inject Neo4j button if there was a result
+    if tool_output.get("result"):
+        last_query = tool_output.get("intermediate_steps", [{}])[-1].get("query", "")
+        final_response = final_response.replace(
+            "[[button_query]]",
+            f"[Open Neo4J](http://localhost:7474/browser/?cmd=edit&arg={last_query})"
+        )
+    else:
+        final_response = final_response.replace("[[button_query]]", "")
+
+    # 5. Update history
     conversation_history.append({
         "input": question,
         "output": final_response
     })
-    
+
     return final_response
 
 @retry(tries=2, delay=10)
 def get_results(question: str) -> dict:
+    """Main processing function for external calls"""
     llm_processed_output = process_with_llm(question=question)
-
-    # 3. Return the result including both the tool output and the LLM response
     return {
-        "input": question,  # User input
-        "output": llm_processed_output,  # Output after processing with LLM
-        # "intermediate_steps": tool_result["intermediate_steps"],  # Intermediate steps (if any)
-        # "tools_used": tool_result["tools_used"],  # List of tools used
+        "input": question,
+        "output": llm_processed_output,
     }
+
+
